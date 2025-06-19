@@ -1,0 +1,6 @@
+# Gitignore for Node.js projects
+node_modules/
+.env
+build/
+dist/
+coverage/

@@ -1,0 +1,35 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: Install Dependencies (Backend)
+      run: npm ci
+      working-directory: backend
+    - name: Install Dependencies (Frontend)
+      run: npm ci
+      working-directory: frontend
+    # - name: Run Tests (Optional - uncomment if you have tests)
+    #   run: npm test
+    #   working-directory: backend # Or frontend, or both
+    # - name: Run Build (Optional - uncomment if you have a build step)
+    #   run: npm run build
+    #   working-directory: frontend
