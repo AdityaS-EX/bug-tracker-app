@@ -9,6 +9,7 @@ import ProjectDetail from './components/ProjectDetail'; // Import ProjectDetail
 import TicketList from './components/TicketList';
 import TicketForm from './components/TicketForm';
 import TicketDetail from './components/TicketDetail'; // Import TicketDetail component
+import KanbanBoard from './components/KanbanBoard'; // Import KanbanBoard component
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             <Route path="projects/:projectId/tickets" element={<TicketList />} />
             <Route path="projects/:projectId/tickets/new" element={<TicketForm />} />
             <Route path="projects/:projectId/tickets/:ticketId" element={<TicketDetail />} />
+            <Route path="projects/:projectId/kanban" element={<KanbanBoard />} /> {/* Add Kanban Board route */}
             {/* Add more nested routes as needed */}
           </Route>
         </Routes>

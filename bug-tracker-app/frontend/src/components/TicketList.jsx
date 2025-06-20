@@ -2,64 +2,97 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import TicketFilters from './TicketFilters'; // Import TicketFilters component
 
 const TicketList = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, authLoading } = useContext(AuthContext);
+  const { isAuthenticated, authLoading, logout } = useContext(AuthContext); // Destructure logout
 
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]); // State to store project team members
 
+  // Function to fetch tickets (used by TicketFilters)
+  const fetchTickets = async (filters = {}) => {
+    if (!authLoading && isAuthenticated && projectId) {
+      setLoading(true); // Set loading to true before fetching
+      try {
+        const token = localStorage.getItem('token');
+         if (!token) {
+              setError('No token found');
+              setLoading(false);
+              return;
+          }
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${token}`, // Use Bearer token
+          },
+          params: {
+            projectId: projectId,
+            ...filters, // Spread the filters object here
+          },
+        };
+        const res = await axios.get('/api/tickets', config);
+        setTickets(res.data);
+        setLoading(false);
+      } catch (err) {
+        console.error(err);
+        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          logout();
+          navigate('/login');
+        } else {
+          setError(err.response ? err.response.data.msg : 'Server Error');
+        }
+         setLoading(false); // Set loading to false on error
+      }
+    }
+  };
+
+  // Fetch project details to get team members and initial tickets
   useEffect(() => {
-    const fetchTickets = async () => {
+    const fetchData = async () => {
       if (!authLoading && isAuthenticated && projectId) {
+        setLoading(true); // Set loading to true before fetching
         try {
           const token = localStorage.getItem('token');
-           if (!token) {
-                setError('No token found');
-                setLoading(false);
-                return;
-            }
           const config = {
             headers: {
-              'x-auth-token': token,
-            },
-            params: {
-              projectId: projectId,
+              'Authorization': `Bearer ${token}`,
             },
           };
-          const res = await axios.get('/api/tickets', config);
-          setTickets(res.data);
-          setLoading(false);
+          // Fetch project details
+          const projectRes = await axios.get(`/api/projects/${projectId}`, config);
+          setTeamMembers(projectRes.data.teamMembers); // Assuming project data includes teamMembers
+
+          // Fetch initial tickets
+          await fetchTickets();
+
         } catch (err) {
           console.error(err);
-          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-            // If unauthorized or forbidden, log out the user and redirect to login
-            logout(); // Assuming logout is available from AuthContext
+           if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+            logout();
             navigate('/login');
           } else {
             setError(err.response ? err.response.data.msg : 'Server Error');
-            setLoading(false);
           }
+           setLoading(false); // Set loading to false on error
         }
       } else if (!authLoading && !isAuthenticated) {
-           // Redirect to login if not authenticated
-            navigate('/login');
+         navigate('/login');
       }
     };
 
-    fetchTickets();
-  }, [isAuthenticated, authLoading, projectId, navigate]);
+    fetchData();
+  }, [isAuthenticated, authLoading, projectId, navigate]); // Depend on auth state, project ID, and navigate
+
 
   if (authLoading || loading) {
     return <div className="container mx-auto mt-8 p-4">Loading tickets...</div>;
   }
 
    if (!isAuthenticated) {
-    // Redirect to login if not authenticated after authLoading is false
-    // This case is handled in useEffect, but this prevents rendering issues
     return null;
   }
 
@@ -70,6 +103,15 @@ const TicketList = () => {
   return (
     <div className="container mx-auto mt-8 p-4">
       <h1 className="text-2xl font-bold mb-4">Tickets for Project {projectId}</h1> {/* Potentially display project title */}
+
+      {/* Render TicketFilters component */}
+      <TicketFilters
+        projectId={projectId}
+        setTickets={setTickets}
+        teamMembers={teamMembers}
+        fetchTickets={fetchTickets} // Pass the fetchTickets function to the filters component
+      />
+
       {tickets.length === 0 ? (
         <p>No tickets found for this project.</p>
       ) : (

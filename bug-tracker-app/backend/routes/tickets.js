@@ -78,7 +78,7 @@ router.get('/:id', auth, async (req, res) => {
 // @access Private
 router.get('/', auth, async (req, res) => {
   try {
-    const projectId = req.query.projectId;
+    const { projectId, status, priority, assignee, keyword } = req.query;
 
     if (!projectId) {
       return res.status(400).json({ msg: 'Project ID is required' });
@@ -94,7 +94,29 @@ router.get('/', auth, async (req, res) => {
       return res.status(403).json({ msg: 'User is not a member of this project' });
     }
 
-    const tickets = await Ticket.find({ projectId }).populate('assignee', 'name email');
+    const filter = { projectId };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (priority) {
+      filter.priority = priority;
+    }
+
+    if (assignee) {
+       // Ensure assignee is treated as null if "unassigned" or similar is passed
+       filter.assignee = assignee === 'unassigned' ? null : assignee;
+    }
+
+    if (keyword) {
+      filter.$or = [
+        { title: { $regex: keyword, $options: 'i' } },
+        { description: { $regex: keyword, $options: 'i' } },
+      ];
+    }
+
+    const tickets = await Ticket.find(filter).populate('assignee', 'name email');
     res.json(tickets);
   } catch (err) {
     console.error(err.message);

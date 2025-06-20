@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import CommentSection from './CommentSection'; // Import CommentSection
 
 const TicketDetail = () => {
   const { projectId, ticketId } = useParams();
@@ -89,6 +90,9 @@ const TicketDetail = () => {
         <strong>Assignee:</strong> {ticket.assignee ? `${ticket.assignee.name} (${ticket.assignee.email})` : 'Unassigned'}
       </p>
       <p className="text-gray-700 mb-4"><strong>Created At:</strong> {new Date(ticket.createdAt).toLocaleDateString()}</p>
+
+      {/* Comment Section */}
+      <CommentSection />
 
       {/* Add buttons for editing, assigning, deleting later */}
       <div className="mt-6">
