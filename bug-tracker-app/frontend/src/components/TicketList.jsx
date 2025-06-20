@@ -12,6 +12,7 @@ const TicketList = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [project, setProject] = useState(null); // State to store project details
   const [teamMembers, setTeamMembers] = useState([]); // State to store project team members
 
   // Function to fetch tickets (used by TicketFilters)
@@ -64,6 +65,7 @@ const TicketList = () => {
           };
           // Fetch project details
           const projectRes = await axios.get(`/api/projects/${projectId}`, config);
+          setProject(projectRes.data); // Store the entire project object
           setTeamMembers(projectRes.data.teamMembers); // Assuming project data includes teamMembers
 
           // Fetch initial tickets
@@ -100,9 +102,22 @@ const TicketList = () => {
     return <div className="container mx-auto mt-8 p-4 text-red-700">Error: {error}</div>;
   }
 
+
+
   return (
     <div className="container mx-auto mt-8 p-4">
-      <h1 className="text-2xl font-bold mb-4">Tickets for Project {projectId}</h1> {/* Potentially display project title */}
+      <div className="flex items-center mb-4">
+        <button
+          onClick={() => navigate('/')}
+          className="mr-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+        >
+          <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 010 1.06L9.56 10l3.23 3.71a.75.75 0 11-1.06 1.06l-3.75-4.3a.75.75 0 010-1.08l3.75-4.3a.75.75 0 011.06 0z" clipRule="evenodd" />
+          </svg>
+          Back to Projects
+        </button>
+        <h1 className="text-2xl font-bold">Tickets for Project {project ? project.title : projectId}</h1> {/* Display project title if available */}
+      </div>
 
       {/* Render TicketFilters component */}
       <TicketFilters

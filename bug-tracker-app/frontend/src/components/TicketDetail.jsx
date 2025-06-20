@@ -142,11 +142,22 @@ const TicketDetail = () => {
     return <div className="container mx-auto mt-8 p-4">Ticket not found.</div>;
   }
 
+
   return (
     <div className="container mx-auto mt-8 p-4 bg-white rounded shadow-md">
-      <h1 className="text-2xl font-bold mb-4">Ticket: {ticket.title}</h1>
+      <div className="flex items-center mb-4">
+        <button
+          onClick={() => navigate(`/projects/${projectId}/tickets`)}
+          className="mr-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
+        >
+           <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 010 1.06L9.56 10l3.23 3.71a.75.75 0 11-1.06 1.06l-3.75-4.3a.75.75 0 010-1.08l3.75-4.3a.75.75 0 011.06 0z" clipRule="evenodd" />
+          </svg>
+          Back to Ticket List
+        </button>
+        <h1 className="text-2xl font-bold">Ticket: {ticket.title}</h1>
+      </div>
       <p className="text-gray-700 mb-4"><strong>Description:</strong> {ticket.description || 'No description provided.'}</p>
-      <p className="text-gray-700 mb-2"><strong>Priority:</strong> {ticket.priority}</p>
       <p className="text-gray-700 mb-2"><strong>Status:</strong> {ticket.status}</p>
       <p className="text-gray-700 mb-2">
         <strong>Assignee:</strong> {ticket.assignee ? `${ticket.assignee.name} (${ticket.assignee.email})` : 'Unassigned'}
