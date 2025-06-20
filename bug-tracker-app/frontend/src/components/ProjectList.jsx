@@ -26,7 +26,7 @@ const ProjectList = () => {
         try {
           const res = await axios.get('/api/projects', {
             headers: {
-              'x-auth-token': token,
+              'Authorization': `Bearer ${token}`,
             },
           });
           setProjects(res.data);

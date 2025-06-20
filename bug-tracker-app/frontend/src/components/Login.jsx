@@ -16,7 +16,8 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', formData);
+      // Use relative URL, axios.defaults.baseURL will be prepended
+      const res = await axios.post('/api/auth/login', formData);
       login(res.data.token);
       setError(''); // Clear error on successful login
       navigate('/'); // Redirect to home page after successful login

@@ -51,6 +51,7 @@ router.post('/register', async (req, res) => {
 // @desc    Authenticate user & get token
 // @access  Public
 router.post('/login', async (req, res) => {
+  console.log('Attempting to access login route.');
   const { email, password } = req.body;
 
   try {
@@ -82,7 +83,7 @@ router.post('/login', async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
+    console.error('Backend Login Error:', err);
     res.status(500).send('Server error');
   }
 });
