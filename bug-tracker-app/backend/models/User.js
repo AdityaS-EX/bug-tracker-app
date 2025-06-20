@@ -18,7 +18,17 @@ const UserSchema = new mongoose.Schema({
   date: {
     type: Date,
     default: Date.now
-  }
+  },
+  role: {
+    type: String,
+    enum: ['Admin', 'Developer', 'Submitter'], // Define possible roles
+    default: 'Developer' // Default role for new users
+  },
+  permissions: [
+    {
+      type: String
+    }
+  ] // Array to store specific permissions like 'delete_ticket'
 });
 
 // Hash password before saving

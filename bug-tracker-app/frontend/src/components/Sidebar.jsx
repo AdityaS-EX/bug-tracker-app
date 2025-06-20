@@ -3,13 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = () => {
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext); // Get user from AuthContext
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  // Check if the logged-in user is an admin
+  const isAdmin = user && user.role === 'Admin';
 
   return (
     <div className="w-64 bg-gray-800 text-white flex flex-col">
@@ -25,6 +28,13 @@ const Sidebar = () => {
         {/* <Link to="/tickets" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
           Tickets
         </Link> */}
+
+        {/* User Management Link (Admin only) */}
+        {isAdmin && (
+          <Link to="/users" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 mt-2">
+            User Management
+          </Link>
+        )}
       </nav>
       <div className="p-4">
         <button
