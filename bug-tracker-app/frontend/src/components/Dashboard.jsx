@@ -53,7 +53,9 @@ const Dashboard = () => {
           const isLast = index === pathnames.length - 1;
           // Basic mapping for known routes, could be more sophisticated
           let displayName = name;
-          if (name === 'projects' && selectedProject) {
+          if (name === 'dashboard') { // Capitalize 'dashboard' breadcrumb
+            displayName = 'Dashboard';
+          } else if (name === 'projects' && selectedProject) {
             displayName = selectedProject.title; // Or list of projects
           } else if (name === projectId && selectedProject) {
              displayName = selectedProject.title; // Project name for project detail route

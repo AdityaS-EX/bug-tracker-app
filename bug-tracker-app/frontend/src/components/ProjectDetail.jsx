@@ -6,22 +6,24 @@ import { AuthContext } from '../context/AuthContext';
 const ProjectDetail = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  // Include user and logout from AuthContext
   const { isAuthenticated, authLoading, user, logout } = useContext(AuthContext);
 
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // State for inviting members
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
 
+  // State for removing members
+  const [removeMemberSuccess, setRemoveMemberSuccess] = useState('');
+  const [removeMemberError, setRemoveMemberError] = useState('');
+
   const fetchProjectDetails = useCallback(async () => {
     if (!authLoading && isAuthenticated && projectId) {
-      setLoading(true); // Set loading true at the start of fetch
-      setError(null); // Clear previous main errors
+      setLoading(true); 
+      setError(null); 
       try {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -31,7 +33,6 @@ const ProjectDetail = () => {
         }
         const config = {
           headers: {
-            // Ensure correct auth header, was x-auth-token, should be Authorization: Bearer
             'Authorization': `Bearer ${token}`,
           },
         };
@@ -40,7 +41,7 @@ const ProjectDetail = () => {
       } catch (err) {
         console.error('Fetch Project Details Error:', err);
         if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-          logout(); 
+          if (logout) logout(); 
           navigate('/login');
         } else {
           setError(err.response?.data?.message || 'Server Error fetching project details');
@@ -65,6 +66,8 @@ const ProjectDetail = () => {
     }
     setInviteError('');
     setInviteSuccess('');
+    setRemoveMemberError(''); // Clear other messages
+    setRemoveMemberSuccess('');
 
     try {
       const token = localStorage.getItem('token');
@@ -76,12 +79,37 @@ const ProjectDetail = () => {
       };
       const body = { email: inviteEmail };
       await axios.post(`/api/projects/${projectId}/invite`, body, config);
-      setInviteSuccess(`User ${inviteEmail} invited successfully!`);
+      setInviteSuccess(`User ${inviteEmail} invited successfully! Team list updated.`);
       setInviteEmail('');
-      fetchProjectDetails(); // Refresh project details to show new member
+      fetchProjectDetails(); 
     } catch (err) {
       console.error('Invite Member Error:', err);
       setInviteError(err.response?.data?.message || 'Failed to invite user.');
+    }
+  };
+
+  const handleRemoveMember = async (memberIdToRemove) => {
+    if (!window.confirm('Are you sure you want to remove this member from the project? They will also be unassigned from any tickets in this project.')) {
+      return;
+    }
+    setInviteError(''); 
+    setInviteSuccess('');
+    setRemoveMemberError('');
+    setRemoveMemberSuccess('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      };
+      await axios.delete(`/api/projects/${projectId}/members/${memberIdToRemove}`, config);
+      setRemoveMemberSuccess('Member removed successfully. Team list and relevant tickets updated.');
+      fetchProjectDetails(); // Refresh project details
+    } catch (err) {
+      console.error('Remove Member Error:', err);
+      setRemoveMemberError(err.response?.data?.message || 'Failed to remove member.');
     }
   };
 
@@ -89,7 +117,6 @@ const ProjectDetail = () => {
     return <div className="container mx-auto mt-8 p-4">Loading project details...</div>;
   }
 
-  // This check might be redundant if ProtectedRoute in App.jsx handles it, but good as a safeguard.
   if (!isAuthenticated) {
     return null; 
   }
@@ -108,17 +135,28 @@ const ProjectDetail = () => {
       <p className="text-gray-700 mb-4">{project.description || 'No description provided.'}</p>
 
       <h2 className="text-xl font-semibold mb-2">Team Members:</h2>
+      {removeMemberError && <p className="text-red-500 mb-2">{removeMemberError}</p>}
+      {removeMemberSuccess && <p className="text-green-500 mb-2">{removeMemberSuccess}</p>}
       {project.teamMembers && project.teamMembers.length > 0 ? (
         <ul className="list-disc list-inside mb-4">
           {project.teamMembers.map((member) => (
-            <li key={member._id}>{member.name} ({member.email})</li>
+            <li key={member._id} className="flex justify-between items-center py-1">
+              <span>{member.name} ({member.email})</span>
+              {user && user.role === 'Admin' && user._id !== member._id && (
+                <button 
+                  onClick={() => handleRemoveMember(member._id)}
+                  className="ml-4 bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded"
+                >
+                  Remove
+                </button>
+              )}
+            </li>
           ))}
         </ul>
       ) : (
         <p className="text-gray-600 mb-4">No team members yet.</p>
       )}
 
-      {/* Admin: Add Team Member Section */}
       {user && user.role === 'Admin' && (
         <div className="my-6 p-4 border rounded-md">
           <h3 className="text-lg font-semibold mb-2">Add Member to Project</h3>
