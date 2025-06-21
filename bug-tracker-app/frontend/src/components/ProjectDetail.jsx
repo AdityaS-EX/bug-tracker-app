@@ -82,19 +82,19 @@ const ProjectDetail = () => {
 
       <div className="flex space-x-4">
         <button
-          onClick={() => navigate(`/projects/${projectId}/tickets`)}
+          onClick={() => navigate(`/dashboard/projects/${projectId}/tickets`)}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
         >
           View Tickets
         </button>
         <button
-          onClick={() => navigate(`/projects/${projectId}/tickets/new`)}
+          onClick={() => navigate(`/dashboard/projects/${projectId}/tickets/new`)}
           className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
         >
           Create New Ticket
         </button>
          <button
-          onClick={() => navigate(`/projects/${projectId}/kanban`)}
+          onClick={() => navigate(`/dashboard/projects/${projectId}/kanban`)}
           className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
         >
           View Kanban Board

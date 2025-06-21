@@ -108,7 +108,7 @@ const TicketList = () => {
     <div className="container mx-auto mt-8 p-4">
       <div className="flex items-center mb-4">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(`/dashboard/projects/${projectId}`)}
           className="mr-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
         >
           <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -152,7 +152,7 @@ const TicketList = () => {
                   <td className="py-3 px-6 text-left">{new Date(ticket.createdAt).toLocaleDateString()}</td>
                    <td className="py-3 px-6 text-left">
                     <button
-                        onClick={() => navigate(`/projects/${projectId}/tickets/${ticket._id}`)}
+                        onClick={() => navigate(`/dashboard/projects/${projectId}/tickets/${ticket._id}`)}
                         className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs"
                     >
                         View

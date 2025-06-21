@@ -88,7 +88,7 @@ const TicketDetail = () => {
       };
       await axios.delete(`/api/tickets/${ticketId}`, config);
       // Redirect to ticket list after successful deletion
-      navigate(`/projects/${projectId}/tickets`);
+      navigate(`/dashboard/projects/${projectId}/tickets`);
     } catch (err) {
       console.error(err);
       // Handle error (e.g., show a message)
@@ -128,7 +128,7 @@ const TicketDetail = () => {
             Error: {error}
              <div className="mt-6">
                 <button
-                    onClick={() => navigate(`/projects/${projectId}/tickets`)}
+                    onClick={() => navigate(`/dashboard/projects/${projectId}/tickets`)}
                     className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                 >
                     Back to Ticket List
@@ -147,7 +147,7 @@ const TicketDetail = () => {
     <div className="container mx-auto mt-8 p-4 bg-white rounded shadow-md">
       <div className="flex items-center mb-4">
         <button
-          onClick={() => navigate(`/projects/${projectId}/tickets`)}
+          onClick={() => navigate(`/dashboard/projects/${projectId}/tickets`)}
           className="mr-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center"
         >
            <svg className="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -170,7 +170,7 @@ const TicketDetail = () => {
 
       <div className="mt-6">
          <button
-          onClick={() => navigate(`/projects/${projectId}/tickets`)}
+          onClick={() => navigate(`/dashboard/projects/${projectId}/tickets`)}
           className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
         >
           Back to Ticket List

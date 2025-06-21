@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
@@ -8,60 +8,68 @@ const ProjectList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading, logout } = useContext(AuthContext); // Get auth context loading state and the logout function
+  // Get user from AuthContext to check role
+  const { isAuthenticated, loading: authLoading, logout, user } = useContext(AuthContext);
+
+  const fetchProjects = useCallback(async () => {
+    if (!authLoading && isAuthenticated) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        setError('No authentication token found.');
+        return;
+      }
+      try {
+        setLoading(true); // Set loading true at the start of fetch
+        const res = await axios.get('/api/projects', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        setProjects(res.data);
+      } catch (err) {
+        console.error(err);
+        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          logout();
+          navigate('/login');
+        } else {
+          setError('Failed to fetch projects.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else if (!authLoading && !isAuthenticated) {
+      setLoading(false);
+      setProjects([]);
+    }
+  }, [authLoading, isAuthenticated, logout, navigate]);
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      // Only attempt to fetch if auth context is not loading and user is authenticated
-      if (!authLoading && isAuthenticated) {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          // This case should ideally be handled by App.jsx routing,
-          // but as a fallback, we set error and stop loading.
-          setLoading(false);
-          setError('No authentication token found.');
-          return;
-        }
-
-        try {
-          const res = await axios.get('/api/projects', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          setProjects(res.data);
-          setLoading(false);
-        } catch (err) {
-          console.error(err);
-          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-            // If unauthorized or forbidden, log out the user and redirect to login
-            logout();
-            navigate('/login');
-          } else {
-            setError('Failed to fetch projects.');
-            setLoading(false);
-          }
-        }
-      } else if (!authLoading && !isAuthenticated) {
-         // If auth is not loading but user is not authenticated,
-         // set component loading to false and projects to empty.
-         setLoading(false);
-         setProjects([]);
-      }
-       // If authLoading is true, do nothing, the component will show auth loading indicator
-
-    };
-
-    // Only run fetchProjects when authLoading state changes or isAuthenticated state changes
     fetchProjects();
-  }, [isAuthenticated, authLoading, navigate]); // Depend on isAuthenticated, authLoading, and navigate
+  }, [fetchProjects]);
 
-  // Show loading state from auth context first
+  const handleDeleteProject = async (projectIdToDelete) => {
+    if (window.confirm('Are you sure you want to delete this project and all its associated tickets?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(`/api/projects/${projectIdToDelete}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        // Refresh project list by calling fetchProjects again
+        fetchProjects(); 
+      } catch (err) {
+        console.error('Failed to delete project', err);
+        setError(err.response?.data?.message || 'Failed to delete project.');
+      }
+    }
+  };
+
   if (authLoading) {
       return <div className="text-center">Loading authentication...</div>;
   }
 
-  // Then show component specific loading/error/empty state
   if (loading) {
     return <div className="text-center">Loading projects...</div>;
   }
@@ -71,19 +79,25 @@ const ProjectList = () => {
   }
 
   if (!isAuthenticated) {
-       // If auth loading is false and user is not authenticated,
-       // this component shouldn't be shown directly (App.jsx protects routes),
-       // but as a safeguard, we show a message.
       return <div className="text-center">Please log in to view projects.</div>;
-  }
-
-  if (projects.length === 0) {
-    return <div className="text-center">No projects found.</div>;
   }
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">My Projects</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">My Projects</h1>
+        {user && user.role === 'Admin' && (
+          <button
+            onClick={() => navigate('/dashboard/admin/projects/new')}
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Create New Project
+          </button>
+        )}
+      </div>
+      {projects.length === 0 && !loading && (
+        <div className="text-center">No projects found.</div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {projects.map((project) => (
           <div key={project._id} className="bg-white rounded-lg shadow-md p-6">
@@ -92,11 +106,9 @@ const ProjectList = () => {
             <div className="mb-4">
               <h3 className="text-lg font-medium mb-2">Team Members:</h3>
               {
-              // Check if teamMembers is populated and is an array
               Array.isArray(project.teamMembers) && project.teamMembers.length > 0 ? (
                 <ul className="list-disc list-inside text-gray-700">
                   {project.teamMembers.map(member => (
-                    // Check if member is an object (populated) or just an ID
                     <li key={member._id || member}>{member.name || member} ({member.email || 'Email not available'})</li>
                   ))}
                 </ul>
@@ -104,12 +116,22 @@ const ProjectList = () => {
                 <p className="text-gray-500">No team members yet.</p>
               )}
             </div>
-            <button
-              onClick={() => navigate(`/projects/${project._id}`)}
-              className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            >
-              View Details
-            </button>
+            <div className="flex justify-start space-x-2 mt-4">
+              <button
+                onClick={() => navigate(`/dashboard/projects/${project._id}`)}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              >
+                View Details
+              </button>
+              {user && user.role === 'Admin' && (
+                <button
+                  onClick={() => handleDeleteProject(project._id)}
+                  className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

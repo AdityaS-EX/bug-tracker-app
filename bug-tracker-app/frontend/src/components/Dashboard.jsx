@@ -1,11 +1,12 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { useParams, useLocation, Outlet, Link } from 'react-router-dom'; // Import Outlet and Link
+import { useParams, useLocation, Outlet, Link, useNavigate } from 'react-router-dom'; // Import Outlet, Link, and useNavigate
 import { AuthContext } from '../context/AuthContext';
 import Sidebar from './Sidebar';
 import axios from 'axios';
 
 const Dashboard = () => {
   const { isAuthenticated, authLoading } = useContext(AuthContext);
+  const navigate = useNavigate(); // Initialize useNavigate
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const location = useLocation();
@@ -81,18 +82,13 @@ const Dashboard = () => {
     );
   };
 
-  if (authLoading) {
-    return <div>Loading dashboard...</div>;
-  }
-
-  if (!isAuthenticated) {
-    // Redirect to login if not authenticated
-    return null; // Or a loading spinner, useNavigate will handle redirect
-  }
+  // The ProtectedRoute in App.jsx should handle these initial loading/auth checks
+  // before Dashboard is rendered. If Dashboard renders, we assume auth is okay.
 
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
+      {/* Main content area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="flex justify-between items-center p-4 bg-white border-b">
           {/* Project Selector Dropdown (Placeholder) */}
@@ -104,8 +100,8 @@ const Dashboard = () => {
               onChange={(e) => {
                 const project = projects.find(p => p._id === e.target.value);
                 setSelectedProject(project);
-                // Optional: Navigate to the project dashboard or project detail page
-                 if (project) { /* navigate(`/projects/${project._id}`); */ }
+                // Navigate to the project detail page
+                 if (project) { navigate(`/dashboard/projects/${project._id}`); }
               }}
             >
               <option value="" disabled>Select a project</option>
@@ -127,6 +123,10 @@ const Dashboard = () => {
             <Outlet /> 
           </div>
         </main>
+        {/* Trademark Footer */}
+        <footer className="bg-white text-center p-4 text-gray-600 text-sm border-t">
+          &copy; 2025 Bug Tracker. All rights reserved.
+        </footer>
       </div>
     </div>
   );

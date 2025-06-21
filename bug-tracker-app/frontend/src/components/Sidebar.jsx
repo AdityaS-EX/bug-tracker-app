@@ -15,14 +15,18 @@ const Sidebar = () => {
   const isAdmin = user && user.role === 'Admin';
 
   return (
-    <div className="w-64 bg-gray-800 text-white flex flex-col">
+    <div className="w-48 bg-gray-800 text-white flex flex-col">
       <div className="p-4 text-2xl font-bold text-center">Bug Tracker</div>
       <nav className="flex flex-col flex-grow p-4">
-        <Link to="/" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+        <Link to="/dashboard" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
           Dashboard
         </Link>
-        <Link to="/projects" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+        <Link to="/dashboard/projects" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
           Projects
+        </Link>
+        {/* Account Control Link */}
+        <Link to="/dashboard/account" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+          Account Control
         </Link>
         {/* Add Tickets link later when TicketList is integrated into dashboard layout */}
         {/* <Link to="/tickets" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
@@ -31,7 +35,7 @@ const Sidebar = () => {
 
         {/* User Management Link (Admin only) */}
         {isAdmin && (
-          <Link to="/users" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 mt-2">
+          <Link to="/dashboard/users" className="block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700 mt-2">
             User Management
           </Link>
         )}
