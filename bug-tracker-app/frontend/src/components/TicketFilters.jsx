@@ -25,9 +25,10 @@ const TicketFilters = ({ projectId, setTickets, teamMembers }) => {
         },
       };
       const res = await axios.get('/api/tickets', config);
-      setTickets(res.data);
+      setTickets(Array.isArray(res.data) ? res.data : []); // Ensure an array is set
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching filtered tickets:', err);
+      setTickets([]); // Set to empty array on error
     }
   };
 
@@ -90,7 +91,7 @@ const TicketFilters = ({ projectId, setTickets, teamMembers }) => {
         >
           <option value="">All Assignees</option>
           <option value="unassigned">Unassigned</option>
-          {teamMembers.map(member => (
+          {Array.isArray(teamMembers) && teamMembers.map(member => (
             <option key={member._id} value={member._id}>{member.name}</option>
           ))}
         </select>

@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
-import { DndContext, closestCorners, useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { DndContext, closestCorners, useDroppable, DragOverlay, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core'; // Added DragOverlay and sensor imports
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'; // Added arrayMove
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { AuthContext } from '../context/AuthContext';
 
 // Draggable Ticket Component
-const DraggableTicket = ({ ticket }) => {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: ticket._id });
+const DraggableTicket = ({ ticket, isDragging }) => { // Added isDragging prop
+  const { attributes, listeners, setNodeRef, transform, transition, isOver } = useSortable({ id: ticket._id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.5 : 1, // Make original item semi-transparent when dragging overlay is active
+    zIndex: isOver ? 10 : 'auto', // Attempt to bring item slightly forward if something is dragging over it (might not be needed with DragOverlay)
   };
 
   return (
@@ -22,12 +24,14 @@ const DraggableTicket = ({ ticket }) => {
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-gray-100 p-3 rounded-md shadow-sm mb-3 cursor-grab"
+      className={`bg-white p-3 rounded-md shadow-sm mb-3 cursor-grab ${isDragging ? 'opacity-50' : ''}`}
     >
       <h4 className="text-md font-semibold mb-1">{ticket.title}</h4>
       <p className="text-sm text-gray-600 mb-1">Priority: {ticket.priority}</p>
-      {ticket.assignee && (
+      {ticket.assignee ? (
         <p className="text-sm text-gray-600">Assignee: {ticket.assignee.name}</p>
+      ) : (
+        <p className="text-sm text-gray-500">Unassigned</p>
       )}
     </div>
   );
@@ -35,95 +39,108 @@ const DraggableTicket = ({ ticket }) => {
 
 // Kanban Column Component
 const KanbanColumn = ({ id, title, tickets }) => {
-  const { setNodeRef } = useDroppable({ id }); // Make the column a droppable area
+  const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
-    <div ref={setNodeRef} className="flex-1 bg-gray-200 rounded-md p-4 mr-4 last:mr-0">
-      <h3 className="text-lg font-bold mb-4 text-center">{title}</h3>
+    <div 
+      ref={setNodeRef} 
+      className={`flex-1 bg-gray-100 rounded-md p-4 min-h-[600px] flex flex-col ${isOver ? 'bg-gray-200' : ''}`}
+    >
+      <h3 className="text-lg font-bold mb-4 text-center text-gray-700">{title}</h3>
       <SortableContext id={id} items={tickets.map(ticket => ticket._id)} strategy={verticalListSortingStrategy}>
-        <div className="ticket-list">
+        <div className="ticket-list flex-grow overflow-y-auto p-1"> {/* Added padding for scrollbar visibility */}
           {tickets.map((ticket) => (
+            // Pass isDragging from the active drag state if we want to style the original differently
+            // For now, useSortable's own isDragging will apply to the source item
             <DraggableTicket key={ticket._id} ticket={ticket} />
           ))}
+          {tickets.length === 0 && (
+            <div className="text-center text-gray-400 py-4">Drop tickets here</div>
+          )}
         </div>
       </SortableContext>
     </div>
   );
 };
 
-
 const KanbanBoard = () => {
   const { projectId } = useParams();
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
   const { isAuthenticated, authLoading } = useContext(AuthContext);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activeId, setActiveId] = useState(null); // ID of the currently dragged ticket
 
-  const columnOrder = ['To Do', 'In Progress', 'Done']; // Define column order
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor)
+  );
 
-  // Group tickets by status for rendering
-  const groupedTickets = tickets.reduce((acc, ticket) => {
-    const status = ticket.status || 'To Do'; // Default to 'To Do' if status is missing or unexpected
-    if (columnOrder.includes(status)) {
-      acc[status].push(ticket);
-    } else {
-      // Place tickets with unexpected status in 'To Do'
-      acc['To Do'].push(ticket);
-    }
-    return acc;
-  }, {
-    'To Do': [],
-    'In Progress': [],
-    'Done': [],
-  });
+  const columnOrder = ['To Do', 'In Progress', 'Done'];
 
   useEffect(() => {
     const fetchTickets = async () => {
       if (!authLoading && isAuthenticated && projectId) {
+        setLoading(true);
         try {
           const token = localStorage.getItem('token');
           const config = {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-            params: {
-              projectId: projectId
-            }
+            headers: { 'Authorization': `Bearer ${token}` },
+            params: { projectId }
           };
           const res = await axios.get('/api/tickets', config);
-          setTickets(res.data);
-          setLoading(false);
+          setTickets(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
           console.error(err);
-          // Handle 401/403 errors specifically if needed, similar to ProjectDetail
-          setError(err.response ? err.response.data.msg : 'Server Error');
+          setError(err.response?.data?.msg || 'Server Error fetching tickets');
+          setTickets([]); // Ensure tickets is an array on error
+        } finally {
           setLoading(false);
         }
       }
     };
-
     fetchTickets();
   }, [isAuthenticated, authLoading, projectId]);
 
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
   const handleDragEnd = async (event) => {
+    setActiveId(null); // Clear activeId regardless of drop outcome
     const { active, over } = event;
 
-    // If dropped outside of a droppable area or not over a valid column, do nothing
-    if (!over || !columnOrder.includes(over.id)) return;
+    console.log('[DragEnd] Event:', event);
+    console.log('[DragEnd] Active ID:', active.id, 'Over ID:', over ? over.id : 'null');
 
-    const droppedTicketId = active.id;
-    const targetColumnId = over.id; // This should now be the column ID (status)
-
-    // Find the ticket that was dragged
-    const draggedTicket = tickets.find(ticket => ticket._id === droppedTicketId);
-
-    // If the ticket was dropped in the same column or not found, do nothing
-    if (!draggedTicket || draggedTicket.status === targetColumnId) {
+    if (!over) {
+      console.log('[DragEnd] No drop target (over is null). Aborting.');
+      return;
+    }
+    if (!columnOrder.includes(over.id)) {
+      console.log(`[DragEnd] Invalid drop target: ${over.id}. Aborting.`);
       return;
     }
 
-    // Optimistically update the UI
+    const droppedTicketId = active.id;
+    const targetColumnId = over.id; // This is the status string like 'To Do', 'In Progress', 'Done'
+    const originalTicket = tickets.find(ticket => ticket._id === droppedTicketId);
+
+    console.log('[DragEnd] Dropped Ticket ID:', droppedTicketId);
+    console.log('[DragEnd] Target Column ID (Status):', targetColumnId);
+    console.log('[DragEnd] Original Ticket:', originalTicket);
+
+    if (!originalTicket) {
+      console.log('[DragEnd] Original ticket not found. Aborting.');
+      return;
+    }
+    if (originalTicket.status === targetColumnId) {
+      console.log(`[DragEnd] Ticket dropped in the same column ('${targetColumnId}'). No change needed.`);
+      return;
+    }
+
+    console.log(`[DragEnd] Optimistically updating ticket ${droppedTicketId} from ${originalTicket.status} to ${targetColumnId}`);
     setTickets(prevTickets =>
       prevTickets.map(ticket =>
         ticket._id === droppedTicketId ? { ...ticket, status: targetColumnId } : ticket
@@ -132,38 +149,37 @@ const KanbanBoard = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      };
-
-      // Update the ticket status on the backend
+      const config = { headers: { 'Authorization': `Bearer ${token}` } };
       await axios.put(`/api/tickets/${droppedTicketId}`, { status: targetColumnId }, config);
-
-      // If the backend update is successful, the optimistic update is fine.
-      // If it fails, the useEffect will refetch and correct the state.
-
     } catch (err) {
       console.error(err);
-      // Revert the UI change if the API call fails
       setTickets(prevTickets =>
         prevTickets.map(ticket =>
-          ticket._id === droppedTicketId ? { ...ticket, status: draggedTicket.status } : ticket
+          ticket._id === droppedTicketId ? { ...ticket, status: originalTicket.status } : ticket // Revert to original status
         )
       );
-      setError('Failed to update ticket status');
+      setError('Failed to update ticket status. Change reverted.');
     }
   };
+  
+  const activeTicket = activeId ? tickets.find(ticket => ticket._id === activeId) : null;
+
+  // Group tickets by status for rendering
+  const groupedTickets = tickets.reduce((acc, ticket) => {
+    const status = ticket.status || 'To Do';
+    if (!acc[status]) acc[status] = [];
+    acc[status].push(ticket);
+    return acc;
+  }, {'To Do': [], 'In Progress': [], 'Done': []});
+
 
   if (authLoading || loading) {
     return <div className="container mx-auto mt-8 p-4">Loading tickets...</div>;
-  };
+  }
 
   if (error) {
     return <div className="container mx-auto mt-8 p-4 text-red-700">Error: {error}</div>;
-  };
-
+  }
 
   return (
     <div className="container mx-auto mt-8 p-4 bg-white rounded shadow-md">
@@ -179,12 +195,27 @@ const KanbanBoard = () => {
         </button>
         <h2 className="text-2xl font-bold">Kanban Board</h2>
       </div>
-      <DndContext onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
+      <DndContext 
+        sensors={sensors} 
+        collisionDetection={closestCorners} 
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div className="flex space-x-4">
           {columnOrder.map((columnKey) => (
-            <KanbanColumn key={columnKey} id={columnKey} title={columnKey} tickets={groupedTickets[columnKey] || []} />
+            <KanbanColumn 
+              key={columnKey} 
+              id={columnKey} 
+              title={columnKey} 
+              tickets={groupedTickets[columnKey] || []} 
+            />
           ))}
         </div>
+        <DragOverlay dropAnimation={null}> 
+          {activeTicket ? (
+            <DraggableTicket ticket={activeTicket} isDragging={true} /> // Pass active ticket to overlay
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );

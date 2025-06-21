@@ -4,25 +4,25 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 
 const TicketForm = () => {
-  const { projectId } = useParams(); // Assuming projectId is passed in the URL
+  const { projectId } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated, authLoading } = useContext(AuthContext);
+  const { isAuthenticated, authLoading, logout } = useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     priority: 'Low',
-    assignee: '',
-    projectId: projectId, // Include projectId in form data
+    assignee: '', // Reverted to single assignee, initialized as an empty string
+    projectId: projectId,
   });
   const [projectMembers, setProjectMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const { title, description, priority, assignee } = formData;
+  // Destructure single assignee
+  const { title, description, priority, assignee } = formData; 
 
   useEffect(() => {
-    // Fetch project members to populate assignee dropdown
     const fetchProjectMembers = async () => {
       if (!authLoading && isAuthenticated && projectId) {
         try {
@@ -33,22 +33,23 @@ const TicketForm = () => {
           }
           const config = {
             headers: {
-              'x-auth-token': token,
+              'Authorization': `Bearer ${token}`,
             },
           };
           const res = await axios.get(`/api/projects/${projectId}`, config);
           setProjectMembers(res.data.teamMembers);
         } catch (err) {
-          console.error(err);
-          // setError('Failed to fetch project members');
+          console.error('Failed to fetch project members:', err);
         }
       }
     };
     fetchProjectMembers();
   }, [isAuthenticated, authLoading, projectId]);
 
-  const onChange = (e) =>
+  // Simplified onChange for single select and other inputs
+  const onChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -56,7 +57,6 @@ const TicketForm = () => {
     setError(null);
 
     if (!authLoading && !isAuthenticated) {
-        // Redirect to login if not authenticated
         navigate('/login');
         return;
     }
@@ -71,27 +71,30 @@ const TicketForm = () => {
       const config = {
         headers: {
           'Content-Type': 'application/json',
-          'x-auth-token': token,
+          'Authorization': `Bearer ${token}`,
         },
       };
-      // If no assignee is selected, send null or omit the field
-      const dataToSend = { ...formData };
-      if (dataToSend.assignee === '') {
-          delete dataToSend.assignee;
-      }
+      
+      // Prepare data for single assignee
+      const dataToSend = { 
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        projectId: formData.projectId,
+        // Send assignee only if it's not an empty string, backend handles null conversion
+        assignee: formData.assignee ? formData.assignee : null 
+      }; 
 
       await axios.post('/api/tickets', dataToSend, config);
       setLoading(false);
-      // Redirect to the project's ticket list after creation
       navigate(`/dashboard/projects/${projectId}/tickets`);
     } catch (err) {
       console.error(err.response ? err.response.data : err.message);
       if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        // If unauthorized or forbidden, log out the user and redirect to login
-        logout(); // Assuming logout is available from AuthContext
+        if (logout) logout('Your session has expired. Please log in again.');
         navigate('/login');
       } else {
-        setError(err.response ? err.response.data.msg : 'Server Error');
+        setError(err.response?.data?.message || 'Server Error creating ticket.');
         setLoading(false);
       }
     }
@@ -102,9 +105,8 @@ const TicketForm = () => {
   }
 
    if (!isAuthenticated) {
-    // Redirect to login if not authenticated after authLoading is false
     navigate('/login');
-    return null; // Or a loading indicator if preferred
+    return null; 
   }
 
   return (
@@ -171,13 +173,13 @@ const TicketForm = () => {
             Assignee
           </label>
           <select
-            id="assignee"
-            name="assignee"
-            value={assignee}
+            id="assignee" // Reverted id
+            name="assignee" // Reverted name
+            value={assignee} // Bind to single assignee string
             onChange={onChange}
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
           >
-             <option value="">Select Assignee (Optional)</option>
+            <option value="">Select Assignee (Optional)</option> 
             {projectMembers.map((member) => (
                 <option key={member._id} value={member._id}>
                     {member.name} ({member.email})

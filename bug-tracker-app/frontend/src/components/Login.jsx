@@ -1,13 +1,24 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react'; // Import useEffect
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { AuthContext } from '../context/AuthContext';
 
 const Login = () => {
-  const { login } = useContext(AuthContext);
+  // Consume logoutMessage and clearLogoutMessage from AuthContext
+  const { login, logoutMessage, clearLogoutMessage } = useContext(AuthContext);
   const navigate = useNavigate(); // Initialize useNavigate
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Clear the logout message when the component unmounts or if the user navigates away
+    // This ensures the message is shown once per logout event.
+    return () => {
+      if (logoutMessage) { // Only clear if there was a message
+        clearLogoutMessage();
+      }
+    };
+  }, [logoutMessage, clearLogoutMessage]); // Depend on logoutMessage to re-run if it changes
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -30,6 +41,12 @@ const Login = () => {
     <div className="flex justify-center items-center h-screen bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-sm">
         <h2 className="text-2xl mb-4 text-center">Login</h2>
+        {/* Display logout message if present */}
+        {logoutMessage && (
+          <p className="text-blue-500 mb-4 text-center bg-blue-100 border border-blue-300 p-3 rounded">
+            {logoutMessage}
+          </p>
+        )}
         {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
         <input
           type="email"

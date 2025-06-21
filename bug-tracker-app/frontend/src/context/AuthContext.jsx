@@ -7,6 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [logoutMessage, setLogoutMessage] = useState(''); // State for logout messages
 
   // Load user from backend using token
   const loadUser = async () => {
@@ -39,10 +40,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Effect to load user on initial mount
+  // Effect to load user on initial mount and set up axios response interceptor
   useEffect(() => {
     console.log('AuthContext useEffect is running (initial mount). Calling loadUser().');
     loadUser();
+
+    // Axios response interceptor for handling 401 errors
+    const interceptor = axios.interceptors.response.use(
+      (response) => response, // Pass through successful responses
+      (error) => {
+        if (error.response && error.response.status === 401) {
+          // Don't show error for the /api/auth/user check if it fails initially
+          // as this is part of the normal auth flow check.
+          if (error.config.url !== '/api/auth/user') {
+            logout('Your session has expired. Please log in again.');
+          } else {
+            // For the initial /api/auth/user check, just let it fail silently on the UI
+            // logout() without a message will be handled if token is invalid by loadUser itself
+            // or if user explicitly logs out.
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    // Clean up the interceptor when the component unmounts
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+
   }, []); // Empty dependency array means this runs once on mount
 
   // Effect to load user when isAuthenticated or user changes
@@ -75,17 +101,22 @@ export const AuthProvider = ({ children }) => {
     // No need to call loadUser() directly here, the useEffect will trigger
   };
 
-  const logout = () => {
+  // Keep only this logout function that handles the message
+  const logout = (message) => { // Accept an optional message
     console.log('AuthContext logout function called');
     localStorage.removeItem('token');
     setIsAuthenticated(false);
     setUser(null); // Clear user state on logout
+    setLogoutMessage(message || 'You have been successfully logged out.'); // Set logout message
     console.log('isAuthenticated set to false and user is null after logout. useEffect will handle loading state.');
-    // No need to set loading to false here, the useEffect will trigger
+  };
+
+  const clearLogoutMessage = () => {
+    setLogoutMessage('');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, loading, user, login, logout, logoutMessage, clearLogoutMessage }}>
       {children}
     </AuthContext.Provider>
   );
